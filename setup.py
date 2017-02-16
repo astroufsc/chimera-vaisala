@@ -3,6 +3,7 @@ from distutils.core import setup
 setup(
     name='chimera-vaisala',
     version='0.0.1',
+    install_requires=['pyserial'],
     packages=['chimera_vaisala', 'chimera_vaisala.instruments'],
     scripts=[],
     url='http://github.com/astroufsc/chimera-vaisala',
