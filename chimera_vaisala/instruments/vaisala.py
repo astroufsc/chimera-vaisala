@@ -7,8 +7,9 @@ from astropy.units import cds, imperial
 from chimera.core.exceptions import OptionConversionException
 from chimera.instruments.weatherstation import WeatherBase
 from chimera.interfaces.weatherstation import WeatherTemperature, WeatherRain, WSValue, WeatherHumidity, \
-    WeatherPressure, \
-    WeatherWind
+    WeatherPressure, WeatherWind
+
+import numpy as np
 
 regex_header = re.compile('(?P<id_station>[0-9]+)(T|R)+(?P<id_msg>.+?),')
 regex_data = re.compile('(?P<type>[A-Z][a-z])=+(?P<value>.+?(,|$))')
@@ -119,6 +120,26 @@ class Vaisala(WeatherBase, WeatherTemperature, WeatherHumidity, WeatherPressure,
         return WSValue(self._data['2']['obs_time'],
                        self._convert_units(value, units.Celsius if unit == 'C' else units.Fahrenheit, units.Celsius,
                                            unit_out), unit_out)
+
+    def dew_point(self, unit_out=units.Celsius):
+        '''
+        Calculates dew point according to the  Arden Buck equation (https://en.wikipedia.org/wiki/Dew_point).
+
+        :param unit_out:
+        :return:
+        '''
+
+        b = 18.678
+        c = 257.14  # Celsius
+        d = 235.5  # Celsius
+
+        gamma_m = lambda T, RH: np.log(RH / 100. * np.exp((b - T / d) * (T / (c + T))))
+        Tdp = lambda T, RH: c * gamma_m(T, RH) / (b - gamma_m(T, RH))
+
+        return WSValue(self._data['2']['obs_time'],
+                       self._convert_units(Tdp(self.temperature(units.deg_C).value,
+                                               self.humidity(units.pct).value),
+                                           units.Celsius, unit_out), unit_out)
 
     if __name__ == '__main__':
         with open('../../tests/example_data.txt') as fp:
